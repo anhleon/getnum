@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Lấy số điện thoại</title>
+</head>
+<body>
+  <h1>Lấy số điện thoại</h1>
+  <button onclick="getPhone()">Lấy số</button>
+  <p id="output">Chưa có dữ liệu</p>
+
+  <script>
+    async function getPhone() {
+      try {
+        const res = await fetch("https://your-proxy-url.vercel.app/api/get-phone");
+        const data = await res.json();
+        document.getElementById("output").innerText = data.phone || JSON.stringify(data);
+      } catch (e) {
+        document.getElementById("output").innerText = "Lỗi: " + e.message;
+        console.error(e);
+      }
+    }
+  </script>
+</body>
+</html>
