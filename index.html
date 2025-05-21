@@ -12,7 +12,7 @@
   <script>
     async function getPhone() {
       try {
-        const res = await fetch("https://your-proxy-url.vercel.app/api/get-phone");
+        const res = await fetch("https://phone-proxy-demo.vercel.app/api/get-phone");
         const data = await res.json();
         document.getElementById("output").innerText = data.phone || JSON.stringify(data);
       } catch (e) {
