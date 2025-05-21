@@ -2,22 +2,23 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Lấy số điện thoại</title>
+  <title>Lấy số xác minh</title>
 </head>
 <body>
-  <h1>Lấy số điện thoại</h1>
+  <h1>Lấy số xác minh</h1>
   <button onclick="getPhone()">Lấy số</button>
   <p id="output">Chưa có dữ liệu</p>
 
   <script>
     async function getPhone() {
+      const output = document.getElementById("output");
+      output.innerText = "Đang tải...";
       try {
-        const res = await fetch("https://phone-proxy-demo.vercel.app/api/get-phone");
+        const res = await fetch("https://proxy-sms-api.vercel.app/api/get-number");
         const data = await res.json();
-        document.getElementById("output").innerText = data.phone || JSON.stringify(data);
-      } catch (e) {
-        document.getElementById("output").innerText = "Lỗi: " + e.message;
-        console.error(e);
+        output.innerText = data.number || "Không có số.";
+      } catch (err) {
+        output.innerText = "Lỗi: " + err.message;
       }
     }
   </script>
