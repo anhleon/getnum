@@ -1,109 +1,110 @@
-<!DOCTYPE html>
-<html lang="vi">
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nhận Code Email – inboxes.com</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Auto-random Inboxes.com Mail Receiver</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f1f3f8;
-      margin: 0;
-      padding: 20px;
-      text-align: center;
-    }
-
-    .container {
-      max-width: 450px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 16px;
-    }
-
-    button {
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    button:hover {
-      background: #005fcc;
-    }
-
-    #codeBox {
-      margin-top: 20px;
-      padding: 15px;
-      background: #e8f5e9;
-      border-left: 4px solid #4caf50;
-      font-size: 22px;
-      font-weight: bold;
-      display: none;
-    }
-
-    #loading {
-      margin-top: 15px;
-      font-size: 16px;
-      color: #444;
-      display: none;
-    }
+    body { max-width: 800px; margin: 20px auto; font-family: Arial, sans-serif; }
+    header { display: flex; align-items: baseline; gap: 10px; margin-bottom:20px; }
+    button { padding: 8px 12px; }
+    #mails { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    #mails tr { border-bottom: 1px solid #ddd; cursor: pointer; }
+    #mails td { padding: 8px; }
+    .subject { font-weight: bold; }
+    #viewer { margin-top: 20px; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
   </style>
 </head>
 <body>
+  <header>
+    <button id="btnRandom">Random email</button>
+    <span>Your email: <strong id="emailAddr">-</strong></span>
+    <button id="btnRefresh">Refresh now</button>
+    <select id="auto"><option value="0">Auto off</option><option value="15" selected>15s</option><option value="30">30s</option><option value="60">60s</option></select>
+  </header>
 
-  <div class="container">
-    <h2>Nhận Code Email (inboxes.com)</h2>
+  <table id="mails"><tr><td>No mail yet</td></tr></table>
+  <div id="viewer" hidden></div>
 
-    <input id="emailInput" placeholder="Nhập email inbox (ví dụ: test@inboxes.dev)" />
+<script>
+function randomString(len) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for(let i=0;i<len;i++) s += chars.charAt(Math.floor(Math.random()*chars.length));
+  return s;
+}
 
-    <button onclick="startChecking()">Bắt đầu nhận code</button>
+let currentEmail = '';
 
-    <div id="loading">⏳ Đang kiểm tra mail...</div>
+document.getElementById('btnRandom').onclick = () => {
+  currentEmail = randomString(8) + '@inboxes.com';
+  document.getElementById('emailAddr').textContent = currentEmail;
+  fetchMails();
+};
 
-    <div id="codeBox"></div>
-  </div>
+document.getElementById('btnRefresh').onclick = fetchMails;
 
-  <script>
-    let timer = null;
+let timer = null;
+document.getElementById('auto').onchange = e => {
+  if(timer) clearInterval(timer);
+  const v = Number(e.target.value);
+  if(v > 0) timer = setInterval(fetchMails, v*1000);
+};
 
-    function startChecking() {
-      const email = document.getElementById('emailInput').value.trim();
-      if (!email) {
-        alert("Bạn phải nhập email!");
-        return;
-      }
+async function fetchMails(){
+  if(!currentEmail) return;
+  const inbox = encodeURIComponent(currentEmail);
+  const url = `https://api.inboxes.com/inboxes/${inbox}/messages`; // endpoint giả định
+  try {
+    const resp = await fetch(url);
+    if(!resp.ok) throw new Error('Status '+resp.status);
+    const data = await resp.json();
+    renderList(data);
+  } catch(err){
+    console.error('Fetch error', err);
+  }
+}
 
-      document.getElementById("loading").style.display = "block";
+function renderList(arr){
+  const tbl = document.getElementById('mails');
+  tbl.innerHTML = '';
+  if(!Array.isArray(arr) || arr.length === 0) {
+    tbl.innerHTML = '<tr><td>No mails</td></tr>';
+    document.getElementById('viewer').hidden = true;
+    return;
+  }
+  for(const m of arr){
+    const tr = document.createElement('tr');
+    const from = m.from || m.sender || '';
+    const subj = m.subject || m.title || '(No subject)';
+    const date = m.date || m.receivedAt || '';
+    tr.innerHTML = `<td><span class="subject">${escapeHtml(subj)}</span><br><small>${escapeHtml(from)} ${escapeHtml(date)}</small></td>`;
+    tr.onclick = () => viewMail(m.id);
+    tbl.appendChild(tr);
+  }
+}
 
-      // Gọi backend của bạn: /latest-code?email=xxxx
-      timer = setInterval(() => {
-        fetch("https://YOUR-SERVER.com/latest-code?email=" + encodeURIComponent(email))
-          .then(res => res.json())
-          .then(data => {
-            console.log(data);
+async function viewMail(id){
+  const inbox = encodeURIComponent(currentEmail);
+  const url = `https://api.inboxes.com/inboxes/${inbox}/messages/${id}`; // endpoint giả định
+  try{
+    const resp = await fetch(url);
+    if(!resp.ok) throw new Error('Status '+resp.status);
+    const m = await resp.json();
+    const v = document.getElementById('viewer');
+    v.hidden = false;
+    if(m.html) v.innerHTML = m.html;
+    else if(m.text) v.textContent = m.text;
+    else v.textContent = JSON.stringify(m, null, 2);
+  } catch(err){
+    console.error('View mail error', err);
+  }
+}
 
-            if (data.code) {
-              document.getElementById("codeBox").innerHTML =
-                "Mã OTP: <span style='color:#2e7d32'>" + data.code + "</span>";
-              document.getElementById("codeBox").style.display = "block";
-            }
-          })
-          .catch(err => console.error(err));
-      }, 4000);
-    }
-  </script>
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+}
+</script>
 
 </body>
 </html>
-
